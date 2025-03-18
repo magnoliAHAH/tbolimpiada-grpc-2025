@@ -17,7 +17,7 @@ import (
 var client pb.ProcessingServiceClient
 
 func main() {
-	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("loadbalancer:80", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(1024*1024*50)))
 	if err != nil {
 		log.Fatalf("Ошибка подключения к gRPC серверу: %v", err)
 	}
@@ -69,4 +69,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Файл обработан, точка сбора: %s\n", resp.MeetingPoint)
+	fmt.Fprintf(w, "Изображение путей: %s\n", resp.ImageUrl)
+
 }

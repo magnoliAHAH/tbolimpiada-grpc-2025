@@ -1,5 +1,7 @@
 github.com/magnoliAHAH/protos-tbolimpiada v0.0.5 h1:imB0Q28guUAg0O+QTQJGrTYYs2CO4w7st9SIAP6mFpk=
 github.com/magnoliAHAH/protos-tbolimpiada v0.0.5/go.mod h1:YcO3A+N+nolZ09vdIqA+laSP0jJLF3cCqOiaHWaO9KM=
+github.com/magnoliAHAH/protos-tbolimpiada v0.1.2 h1:VDJDcvzvndP1x8rcpWOqev2tpnkBo4EtLnmKzCKDSS0=
+github.com/magnoliAHAH/protos-tbolimpiada v0.1.2/go.mod h1:YcO3A+N+nolZ09vdIqA+laSP0jJLF3cCqOiaHWaO9KM=
 golang.org/x/net v0.34.0 h1:Mb7Mrk043xzHgnRM88suvJFwzVrRfHEHJEl5/71CKw0=
 golang.org/x/net v0.34.0/go.mod h1:di0qlW3YNM5oh6GqDGQr92MyTozJPmybPK4Ev/Gm31k=
 golang.org/x/sys v0.29.0 h1:TPYlXGxvx1MGTn2GiZDhnjPA9wZzZeGKHHmKhHYvgaU=

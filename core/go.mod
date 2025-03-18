@@ -3,7 +3,7 @@ module core
 go 1.24.1
 
 require (
-	github.com/magnoliAHAH/protos-tbolimpiada v0.1.1
+	github.com/magnoliAHAH/protos-tbolimpiada v0.1.2
 	google.golang.org/grpc v1.71.0
 )
 

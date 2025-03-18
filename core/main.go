@@ -1,13 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"core/imagegen"
 	"core/pathfinder"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
+	"strings"
 
 	pb "github.com/magnoliAHAH/protos-tbolimpiada/gen"
 	"google.golang.org/grpc"
@@ -20,14 +24,15 @@ type server struct {
 func (s *server) ProcessFile(ctx context.Context, req *pb.ProcessRequest) (*pb.ProcessResponse, error) {
 	log.Printf("Получен файл: %s, размер: %d байт", req.Filename, len(req.Content))
 
-	// Сохранение файла
+	// Создание временной директории для хранения файлов
 	tmpDir := "/tmp"
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
 		return nil, fmt.Errorf("ошибка при создании директории: %v", err)
 	}
-	filePath := tmpDir + "/" + req.Filename
-	err := os.WriteFile(filePath, req.Content, 0644)
-	if err != nil {
+
+	// Сохранение загруженного файла
+	filePath := fmt.Sprintf("%s/%s", tmpDir, req.Filename)
+	if err := os.WriteFile(filePath, req.Content, 0644); err != nil {
 		return nil, fmt.Errorf("ошибка сохранения файла: %v", err)
 	}
 
@@ -38,45 +43,75 @@ func (s *server) ProcessFile(ctx context.Context, req *pb.ProcessRequest) (*pb.P
 	meetingPoint := pathfinder.FindOptimalMeetingPoint(maze, heroes)
 
 	// Находим пути героев до точки встречи
-	var paths [][]pathfinder.Point
+	var paths [][]imagegen.Point
 	for _, hero := range heroes {
 		path := pathfinder.FindPath(maze, hero, meetingPoint)
 		if path != nil {
-			paths = append(paths, path)
+			var imgPath []imagegen.Point
+			for _, p := range path {
+				imgPath = append(imgPath, imagegen.Point{X: p.X, Y: p.Y})
+			}
+			paths = append(paths, imgPath)
 		}
 	}
 
 	// Генерация изображения
-	imagePath := tmpDir + "/maze.png"
+	imagePath := fmt.Sprintf("%s/maze.png", tmpDir)
 	meetingPointImg := imagegen.Point{X: meetingPoint.X, Y: meetingPoint.Y}
-	var pathsImg [][]imagegen.Point
-	for _, path := range paths {
-		var imgPath []imagegen.Point
-		for _, p := range path {
-			imgPath = append(imgPath, imagegen.Point{X: p.X, Y: p.Y})
-		}
-		pathsImg = append(pathsImg, imgPath)
-	}
 
-	err = imagegen.GenerateMazeImage(maze, meetingPointImg, pathsImg, imagePath)
-	if err != nil {
+	if err := imagegen.GenerateMazeImage(maze, meetingPointImg, paths, imagePath); err != nil {
 		return nil, fmt.Errorf("ошибка генерации изображения: %v", err)
 	}
 
-	// Читаем изображение в []byte
-	imageData, err := os.ReadFile(imagePath)
+	// Формирование имени файла без расширения
+	dotIndex := strings.LastIndex(req.Filename, ".")
+	if dotIndex != -1 {
+		req.Filename = req.Filename[:dotIndex] // Обрезаем расширение
+	}
+
+	// Отправка изображения на файловый сервер
+	downloadURL, err := uploadImageToServer(imagePath, req.Filename)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка чтения изображения: %v", err)
+		return nil, fmt.Errorf("ошибка загрузки изображения на файловый сервер: %v", err)
 	}
 
 	// Возвращаем gRPC-ответ
 	return &pb.ProcessResponse{
-		ImageData:    imageData,
+		ImageUrl:     downloadURL,
 		MeetingPoint: fmt.Sprintf("(%d, %d)", meetingPoint.X, meetingPoint.Y),
 	}, nil
 }
 
-// Читает лабиринт, [][]rune — сам лабиринт, каждый символ представляет тип местности, []Point — координаты героев
+func uploadImageToServer(imagePath, filename string) (string, error) {
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return "", fmt.Errorf("ошибка открытия файла: %w", err)
+	}
+	defer file.Close()
+
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		return "", fmt.Errorf("ошибка чтения файла: %w", err)
+	}
+	fileServerURL := fmt.Sprintf("http://fileserver/upload/%s.png", filename)
+
+	req, err := http.NewRequest("PUT", fileServerURL, bytes.NewBuffer(fileData))
+	if err != nil {
+		return "", fmt.Errorf("ошибка создания запроса: %w", err)
+	}
+	req.Header.Set("Content-Type", "image/png")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("ошибка отправки запроса: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("сервер вернул ошибку: %d", resp.StatusCode)
+	}
+
+	return fmt.Sprintf("http://localhost:8085/images/upload/%s.png", filename), nil
+}
 
 func main() {
 	listener, err := net.Listen("tcp", ":50051")

@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  loadbalancer:
+    image: nginx:latest
+    container_name: loadbalancer
+    volumes:
+      - ./nginx/loadbalancer.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - corea
+      - coreb
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "8081:8080"
+    depends_on:
+      - loadbalancer
+
+  corea:
+    build: ./core
+    container_name: corea
+    environment:
+      - CORE_INSTANCE=A
+    depends_on:
+      - fileserver
+
+  coreb:
+    build: ./core
+    container_name: coreb
+    environment:
+      - CORE_INSTANCE=B
+    depends_on:
+      - fileserver
+
+  fileserver:
+    image: nginx:latest
+    container_name: fileserver
+    volumes:
+      - ./nginx/fileserver.conf:/etc/nginx/nginx.conf:ro
+      - ./files:/usr/share/nginx/html/images
+    ports:
+      - "8085:80"

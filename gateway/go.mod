@@ -5,7 +5,7 @@ go 1.24.1
 require google.golang.org/grpc v1.71.0
 
 require (
-	github.com/magnoliAHAH/protos-tbolimpiada v0.0.5
+	github.com/magnoliAHAH/protos-tbolimpiada v0.1.2
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
